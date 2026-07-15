@@ -1,5 +1,7 @@
 <div align="center">
 
+![review](apps/web/static/og-image.jpg)
+
 # os-docs-v2
 
 Шаблон документации на базе SvelteKit, MDsveX и Tailwind CSS.
