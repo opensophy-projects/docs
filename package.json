@@ -1,0 +1,26 @@
+{
+  "name": "os-docs-v2",
+  "private": true,
+  "version": "0.2",
+  "type": "module",
+  "scripts": {
+    "dev": "npm run dev --workspace=apps/web",
+    "build": "npm run build --workspace=apps/web",
+    "preview": "npm run preview --workspace=apps/web",
+    "check": "npm run check --workspace=apps/web",
+    "test": "npm run test --workspace=apps/web -- --passWithNoTests",
+    "lint": "npm run lint --workspace=apps/web",
+    "format": "npm run format --workspace=apps/web",
+    "format:check": "npm run format:check --workspace=apps/web"
+  },
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "devDependencies": {
+    "prettier-plugin-tailwindcss": "^0.7.2"
+  },
+  "dependencies": {
+    "carbon-icons-svelte": "^13.13.0"
+  }
+}

@@ -1,0 +1,236 @@
+---
+title: Предпросмотр компонента
+description: Как использовать ComponentPreview для живого предпросмотра компонентов прямо в документации — с кодом и интерактивным демо.
+---
+
+<script lang="ts">
+	import { ComponentPreview } from '$lib';
+	import ThemeToggle from '$lib/components/ui/ThemeToggle.svelte';
+	import { themeToggleSource, themeStoreSource } from '$lib/components/ui/demo-sources';
+	import Admonition from '$lib/components/docs/markdown/Admonition.svelte';
+</script>
+
+# Component Preview
+
+`ComponentPreview` — компонент для живого предпросмотра Svelte-компонентов прямо на странице документации. Показывает интерактивное демо сверху и исходный код снизу с подсветкой синтаксиса и вкладками.
+
+## Как это выглядит
+
+Демонстрация на примере `ThemeToggle` — кнопки переключения тёмной/светлой темы. Вкладки показывают полный исходный код компонента и его store:
+
+<ComponentPreview
+	sources={[
+		{ name: 'ThemeToggle.svelte', code: themeToggleSource, language: 'svelte' },
+		{ name: 'theme.svelte.ts', code: themeStoreSource, language: 'typescript' }
+	]}
+>
+	<ThemeToggle />
+</ComponentPreview>
+
+Нажмите на кнопку выше — тема переключится. Вкладки внизу показывают полный исходный код обоих файлов с подсветкой и кнопкой копирования.
+
+## Как подключить
+
+`ComponentPreview` не входит в список автоимпортируемых markdown-компонентов, поэтому его нужно импортировать вручную через блок `script` в `.svx` файле.
+
+### Шаг 1: Добавить импорты
+
+В начале `.svx` файла, после frontmatter, добавьте блок `script` с импортом `ComponentPreview`, самого компонента и его исходного кода через суффикс `?raw`:
+
+```text
+--- frontmatter ---
+title: Моя страница
+--- конец frontmatter ---
+
+блок script (lang ts):
+  import { ComponentPreview } from '$lib';
+  import ThemeToggle from '$lib/components/ui/ThemeToggle.svelte';
+  import { themeToggleSource } from '$lib/components/ui/demo-sources';
+конец блока script
+```
+
+Импорт с суффиксом `?raw` возвращает содержимое файла как строку — это и есть исходный код для вкладок. Импорт без суффикса — живой компонент для превью. Чтобы избежать проблем с source maps внутри `.svx` файлов, `?raw` импорты вынесите в отдельный `.ts` модуль (например `demo-sources.ts`) и импортируйте оттуда.
+
+### Шаг 2: Использовать в markdown
+
+Передайте компонент в `children` (между открывающим и закрывающим тегом), а исходный код — в пропс `sources` как массив вкладок:
+
+```text
+ComponentPreview с пропом sources:
+  sources — массив объектов с полями name, code, language
+  children — живой компонент ThemeToggle
+```
+
+## Пропсы
+
+| Пропс | Тип | Назначение |
+| --- | --- | --- |
+| `code` | `string` | Исходный код для отображения в панели снизу (одна вкладка) |
+| `language` | `string` | Язык подсветки синтаксиса (по умолчанию `typescript`) |
+| `label` | `string` | Название вкладки с кодом (по умолчанию `Code`) |
+| `sources` | `SourceTab[]` | Массив вкладок с кодом (заменяёт `code`) |
+| `controls` | `ComponentPreviewControl[]` | Массив контролов для управления пропсами компонента |
+| `refreshOnControlChange` | `boolean` | Перезагружать превью при изменении контролов |
+| `refreshOnFullScreen` | `boolean` | Перезагружать превью при переходе в полноэкранный режим |
+| `children` | `Snippet` | Живой превью компонента (принимает объект значений контролов) |
+| `class` | `string` | Дополнительные классы для области превью |
+
+## Интерактивные контролы
+
+Пропс `controls` позволяет добавить панель управления пропсами компонента. Контролы связывают параметры демо с UI — пользователь может менять значения и сразу видеть результат. Значения передаются в сниппет `children` как объект.
+
+### Базовая структура контрола
+
+```typescript
+type BasePreviewControl = {
+	name: string;           // Имя пропса компонента
+	label: string;          // Метка в UI
+	description?: string;   // Подсказка при наведении
+	defaultValue?: string | number | boolean;
+};
+```
+
+### Поддерживаемые типы
+
+| Тип | Описание | Дополнительные поля |
+| --- | --- | --- |
+| `boolean` | Переключатель (toggle) | — |
+| `number` | Слайдер | `min`, `max`, `step`, `unit` |
+| `text` | Текстовое поле | `placeholder` |
+| `color` | Цветовой пикер (HSV) | `placeholder` |
+| `select` | Выпадающий список | `options: { label, value }[]` |
+| `file` | Загрузка файла | `accept` |
+
+### Пример контрола
+
+```typescript
+import type { ComponentPreviewControl } from '$lib/components/docs/component-preview/types';
+
+const controls: ComponentPreviewControl[] = [
+	{
+		type: 'boolean',
+		name: 'disabled',
+		label: 'Отключено',
+		defaultValue: false
+	},
+	{
+		type: 'number',
+		name: 'size',
+		label: 'Размер',
+		min: 12,
+		max: 48,
+		step: 4,
+		unit: 'px',
+		defaultValue: 24
+	},
+	{
+		type: 'select',
+		name: 'variant',
+		label: 'Вариант',
+		options: [
+			{ label: 'Основной', value: 'primary' },
+			{ label: 'Вторичный', value: 'secondary' }
+		],
+		defaultValue: 'primary'
+	}
+];
+```
+
+### Использование значений в сниппете
+
+Значения контролов передаются в сниппет `children` как аргумент:
+
+```svelte
+<ComponentPreview controls={controls} sources={[...]}>
+	{#snippet children(values)}
+		<MyComponent
+			disabled={values.disabled}
+			size={values.size}
+			variant={values.variant}
+		/>
+	{/snippet}
+</ComponentPreview>
+```
+
+### Сохранение в URL
+
+Изменённые значения автоматически сохраняются в параметры URL. При перезагрузке страницы значения восстанавливаются. Кнопка сброса возвращает все значения к `defaultValue`.
+
+### Типы контролов (TypeScript)
+
+```typescript
+type BooleanPreviewControl = {
+	type: 'boolean';
+	name: string;
+	label: string;
+	description?: string;
+	defaultValue?: boolean;
+};
+
+type NumberPreviewControl = {
+	type: 'number';
+	name: string;
+	label: string;
+	description?: string;
+	min?: number;
+	max?: number;
+	step?: number;
+	unit?: string;
+	defaultValue?: number;
+};
+
+type TextPreviewControl = {
+	type: 'text' | 'color';
+	name: string;
+	label: string;
+	description?: string;
+	placeholder?: string;
+	defaultValue?: string;
+};
+
+type SelectPreviewControl = {
+	type: 'select';
+	name: string;
+	label: string;
+	description?: string;
+	options: Array<{ label: string; value: string | number }>;
+	defaultValue?: string | number;
+};
+
+type FilePreviewControl = {
+	type: 'file';
+	name: string;
+	label: string;
+	description?: string;
+	accept?: string;  // Например: '.json,.txt'
+	defaultValue?: string;  // Содержимое файла как строка
+};
+```
+
+## Полноэкранный режим
+
+Кнопка в правом верхнем углу превью разворачивает демо на весь экран. Анимация перехода использует GSAP Flip. Кнопка перезагрузки сбрасывает состояние превью.
+
+## Несколько вкладок с кодом
+
+Если нужно показать несколько файлов, используйте пропс `sources` вместо `code`. Передайте массив объектов с полями `name`, `code` и `language` — каждый объект станет отдельной вкладкой. Демонстрация выше использует именно этот подход с двумя вкладками: `ThemeToggle.svelte` и `theme.svelte.ts`.
+
+Каждый объект в массиве `sources` содержит:
+
+| Поле | Тип | Назначение |
+| --- | --- | --- |
+| `name` | `string` | Название вкладки |
+| `code` | `string` | Исходный код |
+| `language` | `string` | Язык подсветки (по умолчанию `typescript`) |
+
+## Особенности
+
+- Превью рендерится в изолированной области с прокруткой
+- Код подсвечивается через Shiki (github-light / github-dark)
+- Вкладки переключаются стрелками на клавиатуре (ArrowLeft / ArrowRight)
+- Кнопка копирования кода в правом верхнем углу панели с кодом
+- Тема превью наследует текущую тему сайта
+
+<Admonition variant="note" title="Важно">
+Компонент `ComponentPreview` не автоимпортируется. Всегда добавляйте блок `script` с импортом вручную. Это сделано намеренно — превью требует передачи реального Svelte-компонента, что невозможно через чистый markdown.
+</Admonition>

@@ -1,0 +1,18 @@
+{
+	"name": "os-docs-v2",
+	"short_name": "os-docs-v2",
+	"description": "os-docs-v2 — шаблон документации на SvelteKit с поиском, тёмной темой, подсветкой синтаксиса и встроенным SEO.",
+	"icons": [
+		{
+			"src": "/favicon.png",
+			"sizes": "any",
+			"type": "image/png",
+			"purpose": "any maskable"
+		}
+	],
+	"theme_color": "#d4a017",
+	"background_color": "#090909",
+	"display": "standalone",
+	"start_url": "/",
+	"lang": "ru"
+}

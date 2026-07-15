@@ -1,0 +1,221 @@
+---
+title: Система имён и кастомные страницы
+---
+
+# Система имён `[N]`, `[C]`, `[A]`
+
+Система имён нужна, чтобы одна файловая структура могла описывать навигацию, категории и страницы без отдельного ручного описания каждого элемента.
+
+```text
+src/lib/content/docs/
+  [N]Документация{docs}/
+    [C]Форматирование{formatting}/
+      [A]Примеры форматирования{formatting}.svx
+```
+
+## Что означает каждый префикс
+
+| Префикс | Тип | Что создаёт |
+| --- | --- | --- |
+| `[N]` | `section` | Верхнюю секцию навигации |
+| `[C]` | `category` | Категорию внутри секции |
+| `[A]` | `page` | Страницу внутри категории или секции |
+
+```text
+[N] = navigation section
+[C] = category
+[A] = article/page
+```
+
+## Полный формат имени
+
+```text
+[ПРЕФИКС]Название{slug}
+```
+
+Где:
+
+- `[ПРЕФИКС]` — один из `[N]`, `[C]`, `[A]`.
+- `Название` — человекочитаемый заголовок.
+- `{slug}` — URL-safe slug.
+
+```text
+[N]Документация{docs}
+[C]Форматирование{formatting}
+[A]Примеры форматирования{formatting}.svx
+```
+
+## Как это реализовано в коде
+
+Реализация находится в `src/lib/content/naming.ts`. Главные функции:
+
+```ts
+parseNamedContentPath('[A]Примеры форматирования{formatting}.svx');
+createNamedContentName('page', 'Примеры форматирования', 'formatting');
+```
+
+`parseNamedContentPath` возвращает объект с типом, названием и slug.
+
+```ts
+{
+  kind: 'page',
+  title: 'Примеры форматирования',
+  slug: 'formatting'
+}
+```
+
+## Создание секции
+
+```ts
+createNamedContentName('section', 'Документация', 'docs');
+```
+
+Результат:
+
+```text
+[N]Документация{docs}
+```
+
+## Создание категории
+
+```ts
+createNamedContentName('category', 'Форматирование', 'formatting');
+```
+
+Результат:
+
+```text
+[C]Форматирование{formatting}
+```
+
+## Создание страницы
+
+```ts
+createNamedContentName('page', 'Примеры форматирования', 'formatting');
+```
+
+Результат:
+
+```text
+[A]Примеры форматирования{formatting}.svx
+```
+
+## Как подключается текущая навигация
+
+Навигация описывается в `src/lib/config/navigation.ts`. Система имён служит утилитарным слоем: она умеет парсить и создавать имена файлов, а структура sidebar задаётся вручную через `contentSections`.
+
+```ts
+export const contentSections = [
+  {
+    id: 'docs',
+    label: 'Документация',
+    navigation: [
+      {
+        slug: 'formatting',
+        name: 'Форматирование',
+        items: [
+          { slug: 'formatting', name: 'Примеры форматирования' },
+          { slug: 'naming-and-custom-pages', name: 'Система имён и кастомные страницы' }
+        ]
+      }
+    ]
+  }
+];
+```
+
+# Система кастомных страниц
+
+Кастомные страницы нужны, когда страница должна быть не обычным `.svx` файлом, а полноценным Svelte-компонентом, например landing page, interactive demo, playground или страница со сложной логикой.
+
+## Где находится registry
+
+```ts
+// src/lib/content/custom-pages.ts
+export const customPages: CustomPageDefinition[] = [];
+```
+
+## Формат кастомной страницы
+
+```ts
+export type CustomPageDefinition = {
+  section: string;
+  slug: string;
+  component: Component;
+  title?: string;
+  description?: string;
+};
+```
+
+## Пример подключения
+
+```ts
+import CustomFormattingPage from '$lib/content/custom/CustomFormattingPage.svelte';
+
+export const customPages = [
+  {
+    section: 'docs',
+    slug: 'custom-formatting',
+    component: CustomFormattingPage,
+    title: 'Кастомная страница форматирования',
+    description: 'Svelte-backed страница внутри docs content system.'
+  }
+];
+```
+
+## Как loader находит кастомные страницы
+
+`src/lib/content/sections.ts` сначала ищет `.svx`, потом проверяет registry кастомных страниц, потом обычные `.svelte` content-файлы.
+
+```ts
+const customPage = getCustomPage(sectionId, slug);
+if (customPage) {
+  return { default: customPage.component };
+}
+```
+
+## Когда использовать `.svx`, `.svelte` и custom page
+
+| Формат | Когда использовать |
+| --- | --- |
+| `.svx` | Обычная документация, markdown, markdown blocks |
+| `.svelte` | Страница с компонентной логикой, но лежит как content-file |
+| `customPages` | Страница генерируется/регистрируется из кода и может не иметь file-backed markdown |
+
+# Markdown chart blocks
+
+Графики пишутся как markdown block `:::chart`. Тип выбирается через `[type]`.
+
+```markdown
+:::chart
+[title]Рост подписчиков
+[type]line
+[colors]#22c55e, #38bdf8, #ec4899
+
+| Месяц | Instagram | Telegram | YouTube |
+|-------|-----------|----------|---------|
+| Янв   | 2100      | 1400     | 900     |
+| Июн   | 4200      | 2800     | 2000    |
+:::
+```
+
+## Поддерживаемые типы
+
+| Type | Название |
+| --- | --- |
+| `bar` | Столбчатый график |
+| `composed` | Составной (бар + линия) |
+| `line` | Линейный график |
+| `pie` | Круговая диаграмма |
+| `radar` | Радарная диаграмма |
+| `ring` | Кольцевая диаграмма |
+| `scatter` | Диаграмма рассеяния |
+
+## Общие параметры chart block
+
+| Параметр | Пример | Значение |
+| --- | --- | --- |
+| `[title]` | `[title]Рост подписчиков` | Заголовок графика |
+| `[type]` | `[type]line` | Тип графика |
+| `[colors]` | `[colors]#22c55e, #38bdf8` | Палитра series/slices |
+
+Данные задаются markdown-таблицей. Первый столбец считается label/x-axis, остальные — числовые series.

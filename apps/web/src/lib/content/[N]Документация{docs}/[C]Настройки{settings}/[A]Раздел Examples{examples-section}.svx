@@ -1,0 +1,84 @@
+---
+title: Раздел Examples и кастомные .svelte страницы
+description: Как работает автодискавери контента и пример кастомной .svelte страницы.
+---
+
+# Автодискавери контента
+
+Шаблон автоматически обнаруживает все разделы контента из файловой структуры директории `src/lib/content/`. Любая поддиректория, содержащая `.svx` или `.svelte` файлы, становится отдельным разделом документации.
+
+## Структура директорий
+
+```text
+src/lib/content/
+  docs/              → раздел /docs
+  examples/          → раздел /examples
+  guides/            → раздел /guides
+```
+
+Каждый раздел автоматически получает:
+
+- отдельный маршрут (`/examples`, `/guides`)
+- навигацию из имен файлов
+- интеграцию с TOC, пагинацией и SEO
+
+# Раздел Examples
+
+В шаблоне есть демо-раздел `Examples`, который показывает Dual-Source Content Model.
+
+## Где находится
+
+```text
+src/lib/content/Examples/
+  example.svelte
+```
+
+Это минимальный пример `.svelte`-страницы, которая:
+
+1. экспортирует `metadata` через `<script module>`
+2. рендерит произвольный Svelte-компонент
+
+## Исходный код
+
+```svelte
+<script module lang="ts">
+  import { type ContentFrontmatter } from '$lib/content/frontmatter';
+
+  export const metadata: ContentFrontmatter = {
+    name: 'Пример кастом страницы',
+    description: 'A .svelte-based example showing the dual-source content model.'
+  };
+</script>
+
+<div class="min-h-full bg-linear-to-t from-accent/0 to-accent"></div>
+```
+
+## Как это работает
+
+| Аспект | Объяснение |
+|--------|-----------|
+| `<script module>` | Код выполняется на этапе сборки, `metadata` доступна для SEO и навигации |
+| `name` | Заголовок страницы в sidebar и `<title>` |
+| `description` | Мета-описание для SEO |
+| Компонент | `.svelte`-файл рендерится напрямую, без markdown-обработки |
+
+## Dual-Source Content Model
+
+Шаблон поддерживает два источника контента:
+
+1. **`.svx`** — Markdown + Svelte-компоненты. Основной формат для документации.
+2. **`.svelte`** — Полноценные Svelte-компоненты. Для страниц с логикой, интерактивом, нестандартным лейаутом.
+
+Оба формата автоматически обнаруживаются_loader'ом в `src/lib/content/sections.ts`.
+
+## Когда использовать .svelte
+
+| Кейс | Почему .svelte |
+|------|----------------|
+| Interactive demo | Нужен JS-интерактив и состояние |
+| Playground | Сложная логика UI |
+| Dashboard | Кастомный layout, графики |
+| Экспериментальная страница | Полный контроль над рендером |
+
+Для обычной документации предпочтительнее `.svx` — он автоматически предоставляет подсветку кода, TOC, пагинацию и markdown-компоненты.
+
